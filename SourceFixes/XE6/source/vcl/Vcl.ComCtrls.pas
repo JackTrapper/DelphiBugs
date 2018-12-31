@@ -18980,6 +18980,8 @@ var
   DispInfo: PLVDispInfo;
 {$ENDIF}
 
+	nMode : Integer;
+
   function ConvertFlags(Flags: Integer): TItemFind;
   begin
     if Flags and LVFI_PARAM <> 0 then
@@ -19032,6 +19034,16 @@ begin
           end;
       NM_CUSTOMDRAW:
         if Assigned(FCanvas) then
+        begin
+        	 // Remember the BkMode this DC started with before any custom draw calls (likely TRANSPARENT).
+          // If the BkMode is altered by FCanvas.Brush and not restored then the text painted on the next ListItem
+          // will have a black background when the ListView is in themed mode. We initially decided to change the
+          // brush style but that was not picking up all cases. That likely happens because a brush style change
+          // doesn't necessarily materialize until some form of painting happens using the brush. We decided that
+        	 // this code should assume that the DC needs to be put back to exactly how we received it after the custom
+          // painting so we do that in the finally near the bottom of this case statement.
+
+          nMode := GetBkMode(NMCustomDraw{$IFNDEF CLR}^{$ENDIF}.hdc); // Get the BkMode set when the hdc was passed to us
           with NMCustomDraw{$IFNDEF CLR}^{$ENDIF} do
           try
             FCanvas.Lock;
@@ -19049,6 +19061,7 @@ begin
                       FCanvas.Handle := hdc;
                       FCanvas.Font := Font;
                       FCanvas.Brush := Brush;
+
                       DefaultDraw := CustomDraw(R, cdPrePaint);
                     finally
                       FCanvas.Handle := 0;
@@ -19097,6 +19110,7 @@ begin
                   FCanvas.Handle := hdc;
                   FCanvas.Font := Font;
                   FCanvas.Brush := Brush;
+
                   FCanvas.Font.OnChange := CanvasChanged;
                   FCanvas.Brush.OnChange := CanvasChanged;
                   FCanvasChanged := False;
@@ -19111,21 +19125,39 @@ begin
                     Result := Result or CDRF_SKIPDEFAULT;
                     Exit;
                   end
-                  else if FCanvasChanged then
+                  // This code was destroying the current font and leaving the stock font in the DC if nothing
+                  // in canvas had changed. Toolkit.CustomDrawFudge was fixing the issue as a side effect because
+                  // it would trigger a canvas change. Now we always run through this code with selective changes
+                  // based on FCanvasChanged.
+                  else //if FCanvasChanged then
                   begin
-                    FCanvasChanged := False;
-                    FCanvas.Font.OnChange := nil;
-                    FCanvas.Brush.OnChange := nil;
+                    // do this at the end now
+//                  FCanvasChanged := False;
+
+                    // I'm still unsure it's correct to wrap this in the if block
+                    if FCanvasChanged then
+                    begin
+                      FCanvas.Font.OnChange := nil;
+                      FCanvas.Brush.OnChange := nil;
+                    end;
+
                     with LVCustomDraw{$IFNDEF CLR}^{$ENDIF} do
                     begin
-                      clrText := ColorToRGB(FCanvas.Font.Color);
-                      clrTextBk := ColorToRGB(FCanvas.Brush.Color);
+                    	 // It seems reasonable to leave these alone unless the flag is true.
+                      if FCanvasChanged then
+                      begin
+                        clrText := ColorToRGB(FCanvas.Font.Color);
+                        clrTextBk := ColorToRGB(FCanvas.Brush.Color);
+                      end;
+
+                      // This is the code we really want to run all the time because it fixes the font in the hdc
 {$IFDEF CLR}
                       if GetObject(FCanvas.Font.Handle, Marshal.SizeOf(LogFont), LogFont) <> 0 then
 {$ELSE}
                       if GetObject(FCanvas.Font.Handle, SizeOf(LogFont), @LogFont) <> 0 then
 {$ENDIF}
                       begin
+                      	// The call below destroys the font and then it gets fixed up after
                         FCanvas.Handle := 0;  // disconnect from hdc
                         // release the font if it's been changed when painting
                         // the listview item, or a previous subitem
@@ -19139,14 +19171,22 @@ begin
                         // don't delete the stock font
                         FOurFont := CreateFontIndirect(LogFont);
                         FStockFont := SelectObject(hdc, FOurFont);
-                        Result := Result or CDRF_NEWFONT;
+
+                        // We only set the flag if someone has changed the canvas
+                        if FCanvasChanged then
+                          Result := Result or CDRF_NEWFONT;
                       end;
                     end;
 {$IFDEF CLR}
                     NMLVCustomDraw := LVCustomDraw;
 {$ENDIF}
-                  end;
+                    FCanvasChanged := False;
+                end;
                 finally
+                  // This was where the font would be removed from the DC if FCanvasChanged was false. It would happen
+                  // because FCanvas.Handle would be non-zero. Now the code above runs, fixes the font and sets
+                  // FCanvas.Handle := 0 before it gets here. In that case the call below does nothing because the
+                  // handle value is already 0.
                   FCanvas.Handle := 0;
                 end;
                 if not SubItem then
@@ -19171,6 +19211,7 @@ begin
                   FCanvas.Handle := hdc;
                   FCanvas.Font := Font;
                   FCanvas.Brush := Brush;
+
                   if SubItem then
                   CustomDrawSubItem(GetItem(TmpItem),
                     LSubItem, TCustomDrawState(Word(uItemState)), cdPostPaint)
@@ -19211,7 +19252,11 @@ begin
             end;
           finally
             FCanvas.Unlock;
+
+            // see the note above the try statement in this block
+            SetBkMode(hdc, nMode);
           end;
+        end;
       LVN_BEGINDRAG:
         FDragIndex := NMListView.iItem;
       LVN_DELETEITEM:
