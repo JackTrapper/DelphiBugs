@@ -33,8 +33,9 @@ procedure TForm2.FormCreate(Sender: TObject);
 var
 	item: TListItem;
    i: Integer;
-   	t1: Int64;
-  j: Integer;
+	t1: Int64;
+	j: Integer;
+   s: string;
 begin
 	ListView1.Align := alClient;
 	for i := 1 to 10 do
@@ -43,8 +44,10 @@ begin
       item.Caption := IntToStr(i);
       for j := 1 to 3 do
       begin
-      	QueryPerformanceCounter({var}t1);
-			item.SubItems.Add(IntToStr(t1));
+      	//QueryPerformanceCounter({var}t1);
+         //s := IntToStr(t1);
+         s := 'More text';
+			item.SubItems.Add(s);
          end;
 	end;
 end;
@@ -58,20 +61,17 @@ var
    s: string;
    sz: TSize;
    pt: TPoint;
-   pseudo: TFormatSettings;
 begin
 	if (SubItem = 1) then
    begin
    	ListView_GetSubItemRect(ListView1.Handle, Item.Index, SubItem, LVIR_BOUNDS, @rc);
-
-      pseudo := TFormatSettings.Create('qps-ploc');
 
 		oldColor := Sender.Canvas.Brush.Color;
 		Sender.Canvas.Brush.Color := clBtnFace;
 		Sender.Canvas.FillRect(rc);
 		Sender.Canvas.Brush.Color := oldColor;
 
-		s := DateToStr(Now, pseudo);
+		s := DateToStr(Now);
 		sz := Sender.Canvas.TextExtent(s);
 		Sender.Canvas.Font := ListView1.Font;
 		Sender.Canvas.TextOut(rc.Left, Round((rc.Top+rc.Bottom-sz.cy)/2), s);

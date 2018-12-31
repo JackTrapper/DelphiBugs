@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<BorlandProject>
-  <Transactions>
-    <Transaction>2018/12/22 20:03:43.988,=D:\Develop\Unit2.pas</Transaction>
-    <Transaction>2018/12/22 20:04:06.518,D:\Develop\Delphi Bugs\ListViewDrawing\Unit2.pas=D:\Develop\Unit2.pas</Transaction>
-    <Transaction>2018/12/22 20:04:06.518,D:\Develop\Delphi Bugs\ListViewDrawing\Unit2.dfm=D:\Develop\Unit2.dfm</Transaction>
-    <Transaction>2018/12/22 20:04:09.141,D:\Develop\Delphi Bugs\ListViewDrawing\Project2.dproj=D:\Develop\Project2.dproj</Transaction>
-  </Transactions>
-</BorlandProject>
