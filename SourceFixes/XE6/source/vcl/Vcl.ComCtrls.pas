@@ -1,3 +1,87 @@
+{$A8,B-,C+,D+,E-,F-,G+,H+,I+,J-,K-,L+,M-,N-,O+,P+,Q-,R-,S-,T-,U-,V+,W-,X+,Y+,Z1}
+{WARN SYMBOL_LIBRARY ON}
+{WARN SYMBOL_PLATFORM ON}
+{WARN SYMBOL_EXPERIMENTAL ON}
+{WARN UNIT_LIBRARY ON}
+{WARN UNIT_PLATFORM ON}
+{WARN UNIT_DEPRECATED ON}
+{WARN UNIT_EXPERIMENTAL ON}
+{WARN HRESULT_COMPAT ON}
+{WARN HIDING_MEMBER ON}
+{WARN HIDDEN_VIRTUAL ON}
+{WARN GARBAGE ON}
+{WARN BOUNDS_ERROR ON}
+{WARN ZERO_NIL_COMPAT ON}
+{WARN STRING_CONST_TRUNCED ON}
+{WARN FOR_LOOP_VAR_VARPAR ON}
+{WARN TYPED_CONST_VARPAR ON}
+{WARN ASG_TO_TYPED_CONST ON}
+{WARN CASE_LABEL_RANGE ON}
+{WARN FOR_VARIABLE ON}
+{WARN CONSTRUCTING_ABSTRACT ON}
+{WARN COMPARISON_FALSE ON}
+{WARN COMPARISON_TRUE ON}
+{WARN COMPARING_SIGNED_UNSIGNED ON}
+{WARN COMBINING_SIGNED_UNSIGNED ON}
+{WARN UNSUPPORTED_CONSTRUCT ON}
+{WARN FILE_OPEN ON}
+{WARN FILE_OPEN_UNITSRC ON}
+{WARN BAD_GLOBAL_SYMBOL ON}
+{WARN DUPLICATE_CTOR_DTOR ON}
+{WARN INVALID_DIRECTIVE ON}
+{WARN PACKAGE_NO_LINK ON}
+{WARN PACKAGED_THREADVAR ON}
+{WARN IMPLICIT_IMPORT ON}
+{WARN HPPEMIT_IGNORED ON}
+{WARN NO_RETVAL ON}
+{WARN USE_BEFORE_DEF ON}
+{WARN FOR_LOOP_VAR_UNDEF ON}
+{WARN UNIT_NAME_MISMATCH ON}
+{WARN NO_CFG_FILE_FOUND ON}
+{WARN IMPLICIT_VARIANTS ON}
+{WARN UNICODE_TO_LOCALE ON}
+{WARN LOCALE_TO_UNICODE ON}
+{WARN IMAGEBASE_MULTIPLE ON}
+{WARN SUSPICIOUS_TYPECAST ON}
+{WARN PRIVATE_PROPACCESSOR ON}
+{$WARN UNSAFE_TYPE OFF}
+{$WARN UNSAFE_CODE OFF}
+{$WARN UNSAFE_CAST OFF}
+{WARN OPTION_TRUNCATED ON}
+{WARN WIDECHAR_REDUCED ON}
+{WARN DUPLICATES_IGNORED ON}
+{WARN UNIT_INIT_SEQ ON}
+{WARN LOCAL_PINVOKE ON}
+{WARN MESSAGE_DIRECTIVE ON}
+{WARN TYPEINFO_IMPLICITLY_ADDED ON}
+{WARN RLINK_WARNING ON}
+{WARN IMPLICIT_STRING_CAST ON}
+{WARN IMPLICIT_STRING_CAST_LOSS ON}
+{$WARN EXPLICIT_STRING_CAST OFF}
+{$WARN EXPLICIT_STRING_CAST_LOSS OFF}
+{WARN CVT_WCHAR_TO_ACHAR ON}
+{WARN CVT_NARROWING_STRING_LOST ON}
+{WARN CVT_ACHAR_TO_WCHAR ON}
+{WARN CVT_WIDENING_STRING_LOST ON}
+{WARN NON_PORTABLE_TYPECAST ON}
+{WARN XML_WHITESPACE_NOT_ALLOWED ON}
+{WARN XML_UNKNOWN_ENTITY ON}
+{WARN XML_INVALID_NAME_START ON}
+{WARN XML_INVALID_NAME ON}
+{WARN XML_EXPECTED_CHARACTER ON}
+{WARN XML_CREF_NO_RESOLVE ON}
+{WARN XML_NO_PARM ON}
+{WARN XML_NO_MATCHING_PARM ON}
+{$WARN IMMUTABLE_STRINGS OFF}
+{$WARN SYMBOL_DEPRECATED OFF}
+
+{$WARN USE_BEFORE_DEF OFF} //W1036:	Variable ‘%s’ might not have been initialized (Delphi)
+
+{$IFNDEF DEBUG}
+	{$DEBUGINFO OFF}
+{$ENDIF}
+
+
 {*******************************************************}
 {                                                       }
 {            Delphi Visual Component Library            }
@@ -15876,14 +15960,62 @@ function TListColumn.GetWidth: TWidth;
 var
   IsStreaming: Boolean;
   LOwner: TCustomListView;
+  LVColumn : TLVColumn;
 begin
   LOwner := TListColumns(Collection).Owner;
   IsStreaming := [csReading, csWriting, csLoading] * LOwner.ComponentState <> [];
 
-  if ((FWidth = 0) and (LOwner.HandleAllocated or not IsStreaming)) or
+  // The TCustomListView handles the ReCreateWnd message by streaming the properties out to a memory stream during
+  // DestroyWnd and then reading them back in during CreateWnd. It also sets the Reading flag when doing this.
+  // If someone attempts to read the width while this is happening then FWidth will get overwritten with the
+  // width of the underlying listview column width when it shouldn't be (It shouldn't be because FWidth was just
+  // read from the memory stream in an attempt to restore it). The check for LOwner.Reading will stop
+  // that from happening.
+
+  if not LOwner.Reading and (
+     ((FWidth = 0) and (LOwner.HandleAllocated or not IsStreaming)) or
      ((not AutoSize) and LOwner.HandleAllocated and (LOwner.ViewStyle = vsReport) and
-     (FWidth <> LVSCW_AUTOSIZE) and (LOwner.ValidHeaderHandle)) then
-    FWidth := ListView_GetColumnWidth(LOwner.Handle, FOrderTag);
+     (FWidth <> LVSCW_AUTOSIZE) and (LOwner.ValidHeaderHandle))
+     ) then
+  begin
+  	 // Issue: The main listview column will fill the listview width and all sub-item will look hidden. They are not
+    // actually hidden but they appear that way because they all have zero width. You can still use the mouse to resize
+    // them but it's not obvious and it's not at all what we want the user to see.
+
+    // How to Re-Create:
+    // 1. Drop a TListView on a form.
+    // 2. Add a resize handler to the listview.
+    // 3. Access the column widths in the resize handler.
+
+    // Why It Happens:
+
+  	 // MSDN Return Code documentation for ListView_GetColumnWidth()
+    // Returns the column width if successful, or zero otherwise. If this macro is used on a list-view control with the
+    // LVS_REPORT style and the specified column does not exist, the return value is undefined.
+
+    // The problem is that it returns zero on error or zero if the column width is zero. How do we know the difference?
+    // The 'original call' below sets the member variable to zero in cases where the ListView is returning error.
+    // That's bad because your TListColumn will now think it has a zero width and when UpdateCols gets called it will
+    // re-create the column with a zero width. It only happens when you access the column width early in the initialization
+    // phase but I haven't fully tracked down exactly when. We tried calling UpdateCols in the
+    // WMParentNotify handler hoping that it would initialize the columns sooner and everything would be fine but
+    // that doesn't seem to be the issue. If we refuse to access the column width (during a resize) until after
+    // the form's OnShow has been called then everything works fine but that puts the burden on the developer. The method
+    // below returns True on success so we only set the FWidth member if it gets valid info from the ListView.
+    // It's probably a little more expensive but it works. Sept. 10, 2014
+
+    // We could FillChar() the structure but it's extra cycles for nothing, mask is the only thing that matters.
+    // If ListView_GetColumn comes back True then we know LVColumn.cx has been set to the value we need
+
+    LVColumn.mask := LVCF_WIDTH;
+
+  	 if ListView_GetColumn(LOwner.Handle, FOrderTag, LVColumn) then
+    	FWidth := LVColumn.cx;
+
+	 // original call, bad because FWidth gets set to zero on error
+//	    FWidth := ListView_GetColumnWidth(LOwner.Handle, FOrderTag);
+  end;
+
   Result := FWidth;
 end;
 
