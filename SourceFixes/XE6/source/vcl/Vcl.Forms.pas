@@ -1,3 +1,5 @@
+{$WARN UNSUPPORTED_CONSTRUCT OFF}
+
 {*******************************************************}
 {                                                       }
 {            Delphi Visual Component Library            }
@@ -12,6 +14,8 @@ unit Vcl.Forms;
 {$C PRELOAD}
 {$WARN SYMBOL_PLATFORM OFF}
 
+{$ALIGN 8} 			// QuadWord Alignment
+
 {$HPPEMIT '#ifndef _WIN64'}
 {$HPPEMIT '#pragma link "dwmapi.lib"'}
 {$HPPEMIT '#endif //_WIN64'}
@@ -19,6 +23,12 @@ unit Vcl.Forms;
 {$IFDEF CPUX64}
   {$DEFINE PUREPASCAL}
 {$ENDIF CPUX64}
+
+{$IFDEF DEBUG}
+	{$DEBUGINFO ON}
+{$ELSE}
+	{$DEBUGINFO OFF}
+{$ENDIF}
 
 interface
 
@@ -6297,8 +6307,24 @@ begin
     with PWMSysCommand(Message.lParam)^ do
 {$ENDIF}
     begin
-      SendCancelMode(nil);
-      if SendAppMessage(CM_APPSYSCOMMAND, CmdType, Key) <> 0 then
+      {
+        Fix for Issue#4
+        Picture the scenario where the user just taps the Alt key. 
+        
+        Normal Windows apps highlight the menu on the current form, or do nothing if they don't have a menu. 
+        The code that handles **CMAppSysCommand** propagates `CM_APPSYSCOMMAND` to the **Application**, which gets handled by the **MainForm**.
+        
+        I cannot see any reason for doing this. 
+        
+        - It doesn't do anything if the main form is disabled (which is the case if something is shown modally from it)
+        - If the main form is enabled: it pops the main form forward and highlights the menu. 
+        
+        This is awkward, and I can't imagine that can ever be an intended behavior. 
+
+        Comment out the the propagation to the main form, and act as though we handled the message ourselves
+      }
+//    SendCancelMode(nil);
+//    if SendAppMessage(CM_APPSYSCOMMAND, CmdType, Key) <> 0 then
         Message.Result := 1;
     end;
 end;
