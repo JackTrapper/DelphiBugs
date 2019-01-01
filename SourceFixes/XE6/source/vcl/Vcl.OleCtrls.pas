@@ -1987,14 +1987,49 @@ begin
     begin
       AWidth := Width;
       AHeight := Height;
-    end;
-    if FOleInplaceObject <> nil then
-    begin
-      LRect := Rect(Left, Top, Left+AWidth, Top+AHeight);
-      FOleInplaceObject.SetObjectRects(LRect, LRect);
-    end;
+	 end;
+	 {VCL bug workaround. The call to FOleInplaceObject.SetObjectRects
+		causes the control to send us back the WM_WINDOWPOSCHANGED message.
+		TWinControl does not properly handle aligning fixing during WM_WindowPosChanged
+		like it does for SetBounds.
+		SetBounds calls:
+				UpdateAnchorRules
+				UpdateExplicitBounds
+				RequestAlign
+
+		while WM_WindowPosChanged only calls:
+				UpdateBounds (which only calls UpdateAnchor Rules)
+
+		We have three choices:
+			- don't call OleInPlaceObject.SetObjectRects. Dephi 5 didn't do it, and it worked fine
+			- add a call to RequestAlign in Vcl.Controls.TWinControl.WMPosChanged
+			- override WM_WindowPosChanged here in TOleControl, call inherited first, then do our own call to RequestAlign
+
+		The first option works; though i don't know the downside of not using SetObjectRects.
+		Reading the documentation, it seems that it is incorrect to use SetObjectsRects to perform resizing.
+		The TWebBrowser *happens* to send WM_WindowPosChanged, and it *happens* to screw us up.
+
+		The person who wrote this code didn't think that calling SetObjectRects would change the position, otherwise they
+		wouldnt' have still called SetBounds.
+
+		Perhaps the ideal fix is to do all the bounds setting first, *then* call SetObjectsRects
+	 }
+	 {Removed. Call *after* inheirted SetBounds
+	 if FOleInplaceObject <> nil then
+	 begin
+		LRect := Rect(Left, Top, Left+AWidth, Top+AHeight);
+		FOleInplaceObject.SetObjectRects(LRect, LRect);
+	 end;}
   end;
+
   inherited SetBounds(ALeft, ATop, AWidth, AHeight);
+
+  //moved from above. We need SetBounds to happen first. Delphi's WMWindowPosChanged does not handle resizing correctly
+  if FOleInplaceObject <> nil then
+  begin
+	 LRect := Rect(Left, Top, Left+AWidth, Top+AHeight);
+	 FOleInplaceObject.SetObjectRects(LRect, LRect);
+  end;
 end;
 
 procedure TOleControl.SetByteProp(Index: Integer; Value: Byte);
