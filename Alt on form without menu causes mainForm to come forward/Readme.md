@@ -1,0 +1,1 @@
+This code demonstrates [Issue #4](https://github.com/JackTrapper/DelphiBugs/issues/4) - Pressing Alt on a form without a menu causes the application MainForm to come forward
