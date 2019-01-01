@@ -1,3 +1,85 @@
+{$A8,B-,C+,D+,E-,F-,G+,H+,I+,J-,K-,L+,M-,N-,O+,P+,Q-,R-,S-,T-,U-,V+,W-,X+,Y+,Z1}
+{$WARN SYMBOL_DEPRECATED ON}
+{$WARN SYMBOL_LIBRARY ON}
+{$WARN SYMBOL_PLATFORM ON}
+{$WARN SYMBOL_EXPERIMENTAL ON}
+{$WARN UNIT_LIBRARY ON}
+{$WARN UNIT_PLATFORM ON}
+{$WARN UNIT_DEPRECATED ON}
+{$WARN UNIT_EXPERIMENTAL ON}
+{$WARN HRESULT_COMPAT ON}
+{$WARN HIDING_MEMBER ON}
+{$WARN HIDDEN_VIRTUAL ON}
+{$WARN GARBAGE ON}
+{$WARN BOUNDS_ERROR ON}
+{$WARN ZERO_NIL_COMPAT ON}
+{$WARN STRING_CONST_TRUNCED ON}
+{$WARN FOR_LOOP_VAR_VARPAR ON}
+{$WARN TYPED_CONST_VARPAR ON}
+{$WARN ASG_TO_TYPED_CONST ON}
+{$WARN CASE_LABEL_RANGE ON}
+{$WARN FOR_VARIABLE ON}
+{$WARN CONSTRUCTING_ABSTRACT ON}
+{$WARN COMPARISON_FALSE ON}
+{$WARN COMPARISON_TRUE ON}
+{$WARN COMPARING_SIGNED_UNSIGNED ON}
+{$WARN COMBINING_SIGNED_UNSIGNED ON}
+{$WARN UNSUPPORTED_CONSTRUCT ON}
+{$WARN FILE_OPEN ON}
+{$WARN FILE_OPEN_UNITSRC ON}
+{$WARN BAD_GLOBAL_SYMBOL ON}
+{$WARN DUPLICATE_CTOR_DTOR ON}
+{$WARN INVALID_DIRECTIVE ON}
+{$WARN PACKAGE_NO_LINK ON}
+{$WARN PACKAGED_THREADVAR ON}
+{$WARN IMPLICIT_IMPORT ON}
+{$WARN HPPEMIT_IGNORED ON}
+{$WARN NO_RETVAL ON}
+{$WARN USE_BEFORE_DEF ON}
+{$WARN FOR_LOOP_VAR_UNDEF ON}
+{$WARN UNIT_NAME_MISMATCH ON}
+{$WARN NO_CFG_FILE_FOUND ON}
+{$WARN IMPLICIT_VARIANTS ON}
+{$WARN UNICODE_TO_LOCALE ON}
+{$WARN LOCALE_TO_UNICODE ON}
+{$WARN IMAGEBASE_MULTIPLE ON}
+{$WARN SUSPICIOUS_TYPECAST ON}
+{$WARN PRIVATE_PROPACCESSOR ON}
+{$WARN UNSAFE_TYPE OFF}
+{$WARN UNSAFE_CODE OFF}
+{$WARN UNSAFE_CAST OFF}
+{$WARN OPTION_TRUNCATED ON}
+{$WARN WIDECHAR_REDUCED ON}
+{$WARN DUPLICATES_IGNORED ON}
+{$WARN UNIT_INIT_SEQ ON}
+{$WARN LOCAL_PINVOKE ON}
+{$WARN MESSAGE_DIRECTIVE ON}
+{$WARN TYPEINFO_IMPLICITLY_ADDED ON}
+{$WARN RLINK_WARNING ON}
+{$WARN IMPLICIT_STRING_CAST ON}
+{$WARN IMPLICIT_STRING_CAST_LOSS ON}
+{$WARN EXPLICIT_STRING_CAST OFF}
+{$WARN EXPLICIT_STRING_CAST_LOSS OFF}
+{$WARN CVT_WCHAR_TO_ACHAR ON}
+{$WARN CVT_NARROWING_STRING_LOST ON}
+{$WARN CVT_ACHAR_TO_WCHAR ON}
+{$WARN CVT_WIDENING_STRING_LOST ON}
+{$WARN NON_PORTABLE_TYPECAST ON}
+{$WARN XML_WHITESPACE_NOT_ALLOWED ON}
+{$WARN XML_UNKNOWN_ENTITY ON}
+{$WARN XML_INVALID_NAME_START ON}
+{$WARN XML_INVALID_NAME ON}
+{$WARN XML_EXPECTED_CHARACTER ON}
+{$WARN XML_CREF_NO_RESOLVE ON}
+{$WARN XML_NO_PARM ON}
+{$WARN XML_NO_MATCHING_PARM ON}
+{$WARN IMMUTABLE_STRINGS OFF}
+{$WARN SYMBOL_DEPRECATED OFF}
+
+{$IFNDEF DEBUG}
+	{$DEBUGINFO OFF}
+{$ENDIF}
+
 {*******************************************************}
 {                                                       }
 {            Delphi Visual Component Library            }
@@ -5160,7 +5242,26 @@ end;
 
 function TUxThemeStyle.GetEnabled: Boolean;
 begin
-  Result := FAvailable and FUseThemes and FNewComCtrls;
+	{
+		20140828	The ability to use Visual Styles is independant of whether we are using version 6 of the Common Controls library
+					It is perfectly valid to use the ThemeAPI while depending on version 5 of the Common Controls Library
+					Conversely, it is valid to use version 6 of the Common Controls library, but not have Visual Styles applied to the application.
+					The correct way to *not* use visual styles in the application is to add an entry to your application's manifest:
+
+
+		<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3" >
+			...
+
+			<asmv3:application>
+				<asmv3:windowsSettings xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">
+					<disableTheming>true</disableTheming>
+				</asmv3:windowsSettings>
+			</asmv3:application>
+
+			...
+		</assembly>
+	}
+  Result := FAvailable and FUseThemes {and FNewComCtrls};
 end;
 
 class function TUxThemeStyle.LoadFromStream(Stream: TStream): TCustomStyleServices;
