@@ -11,7 +11,8 @@ unit Vcl.OleCtrls;
 {$R-,T-,H+,X+}
 {$WARN SYMBOL_PLATFORM OFF}
 
-                                                                                                         
+{$ALIGN 8} 			// QuadWord Alignment
+
 {$IFDEF CPUX64}
   {$DEFINE PUREPASCAL}
 {$ENDIF CPUX64}
