@@ -1,0 +1,1 @@
+This code demonstrates [Issue #5](https://github.com/JackTrapper/DelphiBugs/issues/5) - Shortcuts on the special MainForm are triggered from unrelated modeless forms
