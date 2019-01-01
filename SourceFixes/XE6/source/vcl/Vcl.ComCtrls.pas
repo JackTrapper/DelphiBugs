@@ -5272,6 +5272,14 @@ const
     Extension: 'txt');
   RichEditModuleName = 'RICHED20.DLL';
 
+type
+  TListColumnsFixed = class(TListColumns)
+  private
+    procedure FixOrderTags(Item : TListColumn);
+  protected
+    procedure Notify(Item: TCollectionItem; Action: TCollectionNotification); override;
+  end;
+
 {$IFDEF CLR}
 type
   THandleWrapper = class(TObject)
@@ -16181,6 +16189,35 @@ begin
   end;
 end;
 
+{ TListColumnsFixed }
+
+procedure TListColumnsFixed.FixOrderTags(Item: TListColumn);
+var
+	nIndex : Integer;
+	listColumn: TListColumn;
+begin
+	// The Windows ListView adjusts the LVColumn.iOrder when a column is deleted.
+	// FOrderTag is not adjusted in the original TListColumns collection so it gets out of sync.
+	// This class fixes that.
+
+	for nIndex := 0 to Count - 1 do
+	begin
+		listColumn := Items[nIndex];
+		// if FOrderTag > FOrderTag of the item being deleted then adjust it
+		if ListColumn.FOrderTag > Item.FOrderTag then
+			Dec(ListColumn.FOrderTag);
+	end;
+end;
+
+procedure TListColumnsFixed.Notify(Item: TCollectionItem; Action: TCollectionNotification);
+begin
+	case Action of
+      cnDeleting: FixOrderTags(Item as TListColumn);
+   end;
+
+  inherited;
+end;
+
 { TWorkArea }
 
 constructor TWorkArea.Create(Collection: TCollection);
@@ -17934,7 +17971,8 @@ begin
   FCanvas := TControlCanvas.Create;
   TControlCanvas(FCanvas).Control := Self;
   FDragIndex := -1;
-  FListColumns := TListColumns.Create(Self);
+//  FListColumns := TListColumns.Create(Self);
+  FListColumns := TListColumnsFixed.Create(Self); // Create the version that fixes the FOrderTag issue.
   FListGroups := TListGroups.Create(Self);
   FListItems := CreateListItems;
   FTempItem := CreateListItem;
