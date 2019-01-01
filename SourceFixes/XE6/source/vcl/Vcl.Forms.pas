@@ -10311,8 +10311,21 @@ function TApplication.IsShortCut(var Message: TWMKey): Boolean;
 begin
   Result := False;
   if Assigned(FOnShortCut) then FOnShortCut(Message, Result);
-  Result := Result or (MainForm <> nil) and IsWindowEnabled(MainForm.Handle) and
-    MainForm.IsShortCut(Message)
+
+  {
+    The main form is normally disabled when child forms are shown by calling ShowModal. 
+    In that scenario the code below does nothing. 
+    If you show a child form non-modally then the code below is calling through to the Application MainForm,
+    allowing it to handle the shorcut keys.
+
+    I can't see a good reason for this, and it creates strange behaviour:
+
+    A shortcut/accellerator on the main form is activated from your current form, 
+    instead of the one on your current form.
+    2016-09-01
+  }
+
+// Result := Result or (MainForm <> nil) and IsWindowEnabled(MainForm.Handle) and MainForm.IsShortCut(Message)
 end;
 
 procedure TApplication.PopupControlProc(var Message: TMessage);
