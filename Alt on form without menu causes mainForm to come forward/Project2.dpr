@@ -2,13 +2,15 @@ program Project2;
 
 uses
   Vcl.Forms,
-  Unit2 in 'Unit2.pas' {Form2};
+  FMain in 'FMain.pas' {frmMain},
+  FChild in 'FChild.pas' {frmChild};
 
 {$R *.res}
 
 begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
-  Application.CreateForm(TForm2, Form2);
+  Application.CreateForm(TfrmMain, frmMain);
+  Application.CreateForm(TfrmChild, frmChild);
   Application.Run;
 end.

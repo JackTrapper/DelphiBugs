@@ -27,14 +27,11 @@ implementation
 
 {$R *.dfm}
 
-uses
-	Unit1;
-
 procedure TForm2.Button1Click(Sender: TObject);
 var
 	f: TForm;
 begin
-	f := TForm1.Create(Self);
+	f := TForm2.Create(Self);
    f.Show;
 end;
 
