@@ -16,9 +16,9 @@ object Form2: TForm2
   object Label1: TLabel
     Left = 24
     Top = 24
-    Width = 303
+    Width = 301
     Height = 18
-    Caption = 'Notice columns 0 and 2 are missing at runtime'
+    Caption = 'Notce columns 0 and 2 are missing at runtime'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = 10040064
     Font.Height = -15
